@@ -1,0 +1,429 @@
+/* ================================================================
+   filament-gantt-lite — Custom SVG Gantt Chart
+   Pure in-house code, no third-party Gantt library.
+   Class names use the `cg-*` prefix internally (chart engine) and
+   `fg-lite-*` for the page wrapper / toolbar / popup.
+   ================================================================ */
+
+/* ── Theme tokens (light defaults) ── */
+:root {
+    --cg-bg: #ffffff;
+    --cg-row-odd: #fdfdfd;
+    --cg-row-even: #f9fafb;
+    --cg-header-bg: #ffffff;
+    --cg-border: #e5e7eb;
+    --cg-tick: #f3f3f3;
+    --cg-tick-thick: #e5e7eb;
+    --cg-text-primary: #171717;
+    --cg-text-muted: #7c7c7c;
+    --cg-text-on-bar: #ffffff;
+    --cg-today-line: #3B82F6;
+    --cg-weekend-fill: rgba(0, 0, 0, 0.02);
+    --cg-arrow-color: #d1d5db;
+    --cg-arrow-dot: #d1d5db;
+    --cg-parent-line-color: #d1d5db;
+    --cg-parent-dot-color: #d1d5db;
+    --cg-dep-arrow-color: #6b7280;
+    --cg-dep-arrowhead-color: #6b7280;
+    --cg-progress-bg: rgba(0, 0, 0, 0.1);
+    --cg-ignored-hatch: grey;
+}
+
+/* ── Dark theme ── */
+.dark {
+    --cg-bg: #25282E;
+    --cg-row-odd: #21242A;
+    --cg-row-even: #25282E;
+    --cg-header-bg: #25282E;
+    --cg-border: #2E3239;
+    --cg-tick: #2B2E34;
+    --cg-tick-thick: #2E3239;
+    --cg-text-primary: #e5e7eb;
+    --cg-text-muted: #919EAB;
+    --cg-text-on-bar: #ffffff;
+    --cg-today-line: #3B82F6;
+    --cg-weekend-fill: rgba(255, 255, 255, 0.02);
+    --cg-arrow-color: #4b5563;
+    --cg-arrow-dot: #4b5563;
+    --cg-parent-line-color: #4b5563;
+    --cg-parent-dot-color: #4b5563;
+    --cg-dep-arrow-color: #9ca3af;
+    --cg-dep-arrowhead-color: #9ca3af;
+    --cg-progress-bg: rgba(255, 255, 255, 0.08);
+    --cg-ignored-hatch: #555;
+}
+
+/* ── Container ── */
+.cg-container {
+    position: relative;
+    overflow: visible;
+    border-radius: 0;
+    background: var(--cg-bg);
+    width: fit-content;
+    min-width: 100%;
+}
+
+.cg-container:active {
+    cursor: grabbing;
+}
+
+/* ── SVG root ── */
+.cg-gantt {
+    user-select: none;
+    overflow: visible;
+}
+
+/* ── Grid ── */
+.cg-grid-bg {
+    fill: var(--cg-bg);
+}
+
+.cg-row {
+    fill: var(--cg-row-odd);
+}
+
+.cg-row-even {
+    fill: var(--cg-row-even);
+}
+
+.cg-tick {
+    stroke: var(--cg-tick);
+    stroke-width: 0.4;
+}
+
+.cg-tick-thick {
+    stroke: var(--cg-tick-thick);
+    stroke-width: 0.7;
+}
+
+.cg-row-line {
+    stroke: var(--cg-tick);
+    stroke-width: 0.3;
+}
+
+/* ── Headers (DOM divs) ── */
+.cg-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--cg-header-bg);
+    border-bottom: 1px solid var(--cg-border);
+    overflow: hidden;
+    user-select: none;
+}
+
+.cg-upper-header {
+    position: relative;
+    height: 45px;
+}
+
+.cg-lower-header {
+    position: relative;
+    height: 30px;
+}
+
+.cg-upper-text {
+    position: absolute;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cg-text-primary);
+    white-space: nowrap;
+    padding: 0 8px;
+    line-height: 45px;
+}
+
+.cg-upper-text.cg-current-upper {
+    color: var(--cg-today-line);
+}
+
+.cg-lower-text {
+    position: absolute;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--cg-text-muted);
+    white-space: nowrap;
+    text-align: center;
+    line-height: 30px;
+}
+
+.cg-lower-text.cg-current-date {
+    color: var(--cg-text-primary);
+    font-weight: 600;
+}
+
+/* ── Highlights ── */
+.cg-today-line-svg {
+    stroke: var(--cg-today-line);
+    stroke-width: 1.5;
+}
+
+.cg-today-line {
+    position: absolute;
+    width: 1px;
+    background: var(--cg-today-line);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.cg-today-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cg-today-line);
+    z-index: 3;
+    pointer-events: none;
+}
+
+.cg-weekend {
+    fill: var(--cg-weekend-fill);
+}
+
+.cg-ignored {
+    fill: url(#cg-hatch);
+    opacity: 0.5;
+}
+
+/* ── Bars ── */
+.cg-bar-group {
+    cursor: pointer;
+}
+
+.cg-bar-group:hover .cg-bar {
+    filter: brightness(1.15);
+}
+
+.cg-bar {
+    transition: filter 0.15s ease;
+}
+
+.cg-bar-progress {
+    pointer-events: none;
+}
+
+.cg-bar-label {
+    fill: var(--cg-text-on-bar);
+    font-size: 12px;
+    font-weight: 600;
+    dominant-baseline: central;
+    pointer-events: none;
+}
+
+.cg-bar-avatar {
+    pointer-events: none;
+}
+
+/* ── Parent-child bracket connectors ── */
+.cg-parent-line {
+    stroke: var(--cg-parent-line-color);
+    stroke-width: 1.2;
+}
+
+.cg-parent-dot {
+    fill: var(--cg-parent-dot-color);
+}
+
+/* ── Task-to-task dependency arrows ── */
+.cg-dep-arrow {
+    fill: none;
+    stroke: var(--cg-dep-arrow-color);
+    stroke-width: 1.5;
+}
+
+.cg-arrowhead-fill {
+    fill: var(--cg-dep-arrowhead-color);
+}
+
+/* ── Date range highlight on hover ── */
+.cg-date-highlight {
+    position: absolute;
+    height: 100%;
+    background: var(--cg-today-line);
+    opacity: 0.08;
+    border-radius: 4px;
+    pointer-events: none;
+    display: none;
+}
+
+.cg-bar-group:hover ~ .cg-date-highlight,
+.cg-date-highlight.cg-visible {
+    display: block;
+}
+
+/* ── Scrollbar styling ── */
+.cg-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.cg-container::-webkit-scrollbar-track {
+    background: var(--cg-bg);
+}
+
+.cg-container::-webkit-scrollbar-thumb {
+    background: var(--cg-tick-thick);
+    border-radius: 4px;
+}
+
+.cg-container::-webkit-scrollbar-thumb:hover {
+    background: var(--cg-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Page wrapper (toolbar + chart + sidebar + popup)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.fg-lite-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 480px;
+}
+
+.fg-lite-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--cg-border, #e5e7eb);
+    background: var(--cg-bg, #fff);
+}
+
+.fg-lite-toolbar__group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.fg-lite-btn {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--cg-border, #e5e7eb);
+    color: var(--cg-text, #111);
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 120ms, color 120ms;
+}
+
+.fg-lite-btn:hover {
+    background: var(--cg-row-even, #f9fafb);
+}
+
+.fg-lite-btn--active {
+    background: var(--primary-500, #22C55E);
+    border-color: var(--primary-500, #22C55E);
+    color: #fff;
+}
+
+.fg-lite-btn--active:hover {
+    background: var(--primary-600, #16a34a);
+}
+
+.fg-lite-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+[dir="rtl"] .fg-lite-body {
+    flex-direction: row-reverse;
+}
+
+.fg-lite-sidebar {
+    flex: 0 0 240px;
+    border-inline-end: 1px solid var(--cg-border, #e5e7eb);
+    overflow-y: auto;
+    padding: 8px 0;
+    background: var(--cg-bg, #fff);
+}
+
+.fg-lite-sidebar__group-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--cg-text-muted, #6b7280);
+    padding: 6px 12px;
+    letter-spacing: 0.04em;
+}
+
+.fg-lite-sidebar__item {
+    padding: 6px 12px 6px 24px;
+    font-size: 13px;
+    color: var(--cg-text, #111);
+    cursor: default;
+}
+
+[dir="rtl"] .fg-lite-sidebar__item {
+    padding: 6px 24px 6px 12px;
+}
+
+.fg-lite-chart {
+    flex: 1 1 auto;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Popup: shown when a bar is clicked */
+.fg-lite-popup {
+    position: fixed;
+    z-index: 9999;
+    background: var(--cg-bg, #fff);
+    border: 1px solid var(--cg-border, #e5e7eb);
+    border-radius: 10px;
+    padding: 12px 16px;
+    min-width: 240px;
+    max-width: 300px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    color: var(--cg-text, #111);
+}
+
+.dark .fg-lite-popup {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.fg-lite-popup__title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.fg-lite-popup__dates {
+    font-size: 12px;
+    color: var(--cg-text-muted, #6b7280);
+    margin-bottom: 8px;
+}
+
+.fg-lite-popup__progress {
+    background: var(--cg-row-even, #e5e7eb);
+    border-radius: 6px;
+    height: 6px;
+    margin-bottom: 4px;
+    overflow: hidden;
+}
+
+.fg-lite-popup__progress-bar {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 200ms;
+}
+
+.fg-lite-popup__progress-label {
+    font-size: 11px;
+    color: var(--cg-text-muted, #6b7280);
+}
+
+/* Baseline bar (planned vs actual) — light fill + dashed outline so it
+   reads as "the original plan" against the solid actual bar below it. */
+.cg-bar-baseline {
+    fill: rgba(99, 102, 241, 0.15);
+    stroke: rgba(99, 102, 241, 0.55);
+    stroke-width: 1;
+    stroke-dasharray: 3 2;
+}
+
+.dark .cg-bar-baseline {
+    fill: rgba(165, 180, 252, 0.18);
+    stroke: rgba(165, 180, 252, 0.6);
+}
